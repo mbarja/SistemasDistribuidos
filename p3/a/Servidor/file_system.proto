@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message Path {
+	string value = 1;
+}
+message PathFiles {
+    repeated string values = 2;
+}
+message ReadFileParameters{
+    string nombre_archivo = 1;
+    int32 offset = 2;
+    int32 cant_bytes = 3;
+}
+message ResultadoOpen {
+	string respuesta = 1;
+}
+message ResultadoRF {
+	bytes contenido = 1;
+}
+message ResultadoClose {
+	string respuesta = 1;
+}
+
+service FS {
+	rpc ListFiles(Path) returns (PathFiles){};
+	
+	rpc OpenFile(Path) returns (ResultadoOpen){};
+	
+	rpc ReadFile(ReadFileParameters) returns (ResultadoRF){};
+	
+	rpc CloseFile(Path) returns (ResultadoClose){};
+}
