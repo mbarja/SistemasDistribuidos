@@ -1,5 +1,5 @@
 from Client import Client
-from p3.a.Cliente.ClientStub import Stub
+from ClientStub import Stub
 
 def main():
 	stub = Stub('localhost:50051')

@@ -1,5 +1,5 @@
-from p3.b.Servidor.file_system import FS
-from p3.a.Servidor.Server import Server
+from L1.p3.b.Servidor.file_system import FS
+from L1.p3.a.Servidor.Server import Server
 from ServerStub import Stub
 
 def main():
