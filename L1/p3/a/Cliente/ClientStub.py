@@ -5,7 +5,6 @@ import time
 
 
 class Stub:
-
     def __init__(self, host_port):
         self._appliance = host_port
         self._channel = None

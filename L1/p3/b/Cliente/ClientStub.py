@@ -105,7 +105,6 @@ class FSStub:
 
 
 class Stub:
-
     def __init__(self, host, port):
         self._appliance = (host, port)
         self._channel = None

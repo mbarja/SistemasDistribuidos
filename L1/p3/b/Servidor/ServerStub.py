@@ -62,7 +62,6 @@ class FSStub:
         self._channel.send(data_string)
 
 class Stub:
-
     def __init__(self, adapter, port):
         self._port = port
         self._adapter = adapter

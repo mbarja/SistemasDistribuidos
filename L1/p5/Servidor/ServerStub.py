@@ -9,7 +9,6 @@ class FSStub(threading.Thread):
         self._adapter = file_system_adapter
         threading.Thread.__init__(self)
 
-
     def run(self):
         try:
             while True:
@@ -83,8 +82,6 @@ class Stub:
                 connection, client_address = self.server.accept()
                 newthread = FSStub(connection,self._adapter)
                 newthread.start()
-
-
         except KeyboardInterrupt:
             connection.close()
             self.server.stop(0)
