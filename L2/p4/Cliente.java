@@ -1,14 +1,8 @@
 package p4;
 import java.net.*;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Scanner;
-
-import cr.Client_1;
-import cr.Client_1.InternalInaccuratClock;
-import cr.Client_1.Update;
 
 import java.io.*;
 
