@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
+import java.util.Scanner;
 
 public class Cliente {
 	private Tabla tabla;
@@ -20,21 +21,26 @@ public class Cliente {
 		
 		Cliente cliente = new Cliente();
 		System.out.println("Cliente Iniciado");
-		for(int j=1;j<9;j++)
-        {
+		while(true){
 			System.out.println("****************************");
-			System.out.println("Consulta "+j);
-			try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			cliente.ConsultarAlServidor();
-        }
+			System.out.println("Ingrese el servidor NTP a consultar");
+			Scanner sc = new Scanner(System.in);
+			String servidorNTP = sc.nextLine();
+			for(int j=1;j<9;j++)
+	        {
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println("****************************");
+				System.out.println("Consulta "+j);
+				cliente.ConsultarAlServidor(servidorNTP);
+	        }
+		}
 	}
 	
-	private void ConsultarAlServidor() {
-		String serverName= "south-america.pool.ntp.org";
+	private void ConsultarAlServidor(String serverName) {
 		// Send request
 		DatagramSocket socket;
 		try {
@@ -45,8 +51,7 @@ public class Cliente {
 			
 			// Set the transmit timestamp *just* before sending the packet
 			// ToDo: Does this actually improve performance or not?
-			NtpMessage.encodeTimestamp(packet.getData(), 40,
-				(System.currentTimeMillis()/1000.0) + 2208988800.0);
+			NtpMessage.encodeTimestamp(packet.getData(), 40,(System.currentTimeMillis()/1000.0) + 2208988800.0);
 			
 			socket.send(packet);
 			
@@ -56,8 +61,7 @@ public class Cliente {
 			socket.receive(packet);
 			
 			// Immediately record the incoming timestamp
-			double destinationTimestamp =
-				(System.currentTimeMillis()/1000.0) + 2208988800.0;
+			double destinationTimestamp =(System.currentTimeMillis()/1000.0) + 2208988800.0;
 			
 			
 			// Process response
@@ -85,14 +89,13 @@ public class Cliente {
 		
 			socket.close();
 			
-			tabla.AgregarNuevaFila(roundTripDelay/2,localClockOffset, NtpMessage.timestampToString(msg.receiveTimestamp));
+			tabla.AgregarNuevaFila(roundTripDelay/2,localClockOffset, NtpMessage.timestampToString(msg.receiveTimestamp), serverName);
 			
 		} catch (SocketException e) {
 			e.printStackTrace();
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

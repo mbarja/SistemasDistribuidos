@@ -17,17 +17,18 @@ public class Tabla extends JFrame {
 
     public Tabla() {
 
-        String[] columnNames = {"RoundTrip Delay", "Offset", "Offset estimado","Fecha y hora",};
+        String[] columnNames = {"RoundTrip Delay", "Offset", "Offset estimado","Fecha y hora", "Servidor NTP"};
         Object[][] datos = {};
 
         dtm = new DefaultTableModel(datos, columnNames);
         final JTable table = new JTable(dtm);
 
-        table.setPreferredScrollableViewportSize(new Dimension(600, 200));
+        table.setPreferredScrollableViewportSize(new Dimension(700, 300));
         table.getColumn(columnNames[0]).setPreferredWidth(50);
         table.getColumn(columnNames[1]).setPreferredWidth(50);
-        table.getColumn(columnNames[2]).setPreferredWidth(100);
-        table.getColumn(columnNames[3]).setPreferredWidth(100);
+        table.getColumn(columnNames[2]).setPreferredWidth(120);
+        table.getColumn(columnNames[3]).setPreferredWidth(150);
+        table.getColumn(columnNames[4]).setPreferredWidth(120);
         
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment( JLabel.CENTER );
@@ -44,12 +45,11 @@ public class Tabla extends JFrame {
         this.setVisible(true);
     }
     
-    public void AgregarNuevaFila(double roundTripDelay,double offset, String fecha) {
-    	 // Agregar nueva fila
+    public void AgregarNuevaFila(double roundTripDelay,double offset, String fecha, String servidorNtp) {
     	String offsetStr = new DecimalFormat("0.00").format(offset*1000);
     	String roundTripDelayStr = new DecimalFormat("0.00").format(roundTripDelay*1000);
     	String offsetEstimado = ObtenerOffsetEstimado(roundTripDelay, offset);
-        Object[] newRow = {roundTripDelayStr, offsetStr, offsetEstimado,fecha};
+        Object[] newRow = {roundTripDelayStr, offsetStr, offsetEstimado,fecha, servidorNtp};
         dtm.addRow(newRow);
 
     }

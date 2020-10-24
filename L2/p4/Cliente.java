@@ -3,7 +3,6 @@ import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Scanner;
-
 import java.io.*;
 
 public class Cliente {
@@ -13,37 +12,33 @@ public class Cliente {
 	 private static String serverName;
 	 private static int serverPort;
 	 
-	 public static class RelojCliente extends Thread 
-	    {
-		 Reloj relojDigital;
-	      
-	        public RelojCliente(long derivaIngresada)  
-	        {
-	            Deriva=derivaIngresada;
-	            //Seteo hora actual - 10 minutos
-	            Timer = System.currentTimeMillis()-600000;
-	            relojDigital = new Reloj(Timer);
-	            
-	        }
-	        public void run()
-	        {
-	            
-	            while(true)
-	            {
-	                try 
-	                    {
-	                        Thread.sleep(Deriva);    
-	                        Timer+=1000;  
-	                        relojDigital.ActualizarHora(Timer);
-	                        System.out.println(SDF.format(Timer)); 
-	                
-	                    } 
-	                catch (InterruptedException ex) 
-	                    {
-	                		System.out.println(ex.getMessage());
-	                    }
-	            }
-	        }
+	 public static class RelojCliente extends Thread {
+		Reloj relojDigital;
+		
+        public RelojCliente(long derivaIngresada)  
+        {
+            Deriva=derivaIngresada;
+            //Seteo hora actual - 10 minutos
+            Timer = System.currentTimeMillis()-600000;
+            relojDigital = new Reloj(Timer);
+            
+        }
+        public void run(){
+            
+            while(true){
+                try 
+                    {
+                        Thread.sleep(Deriva);    
+                        Timer+=1000;  
+                        relojDigital.ActualizarHora(Timer);
+                        System.out.println(SDF.format(Timer)); 
+                
+                    } catch (InterruptedException ex) 
+                    {
+                		System.out.println(ex.getMessage());
+                    }
+            }
+        }
 	    }
 	 
 	 public Cliente(String serverName, int serverPort) {
@@ -55,7 +50,7 @@ public class Cliente {
 	 
 	 public static class ActualizarHora  
 	 {
-	        public void run() throws IOException
+	        public void actualizar() throws IOException
 	        {
 	        	System.out.println("ActualizarHora");
 	        	ArrayList<MuestraRelojServidor> muestrasDelServidor = new ArrayList<MuestraRelojServidor>();
@@ -140,7 +135,7 @@ public class Cliente {
 	        while(true)
 	        {
 	            Thread.sleep(CC);
-	            actualizarHora.run();
+	            actualizarHora.actualizar();
 	        }
 	    }
 

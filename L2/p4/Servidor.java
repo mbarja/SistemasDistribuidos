@@ -18,24 +18,24 @@ public class Servidor extends Thread{
         serverSocket = new ServerSocket(puerto);
     }
 
-    public void run()
-    {
-        while (true) 
-        {
+    public void run(){
+        while (true){
             try {
-                String localHostName = java.net.InetAddress.getLocalHost().getHostName();
+                
                 Socket server = serverSocket.accept(); 
                 clienteConectado=true;
                 DataInputStream in = new DataInputStream(server.getInputStream());
                 DataOutputStream out = new DataOutputStream(server.getOutputStream());
                 while(clienteConectado) {
-	                
+	                //lee el codigo que envía el cliente.
 	                int i=in.readInt();
+	                //si es 1, duerme y envía su hora.
 	                if(i==1)
 	                	{
 	                		Thread.sleep((long)(100+new Random().nextInt(51)));
 	                		out.writeLong(System.currentTimeMillis());  
 	                	}
+	                //si es distinto de 1, el cliente finaliza las consultas
 	                else clienteConectado=false;
                 }
                 server.close();
