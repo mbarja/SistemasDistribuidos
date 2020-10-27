@@ -39,13 +39,9 @@ public class ObjetoRemoto extends UnicastRemoteObject implements InterfaceRemota
     public int resta(int a, int b) 
     {
 	    System.out.println ("Restando " + a + " + " + b +"...");
-		try{
-			Thread currentThread = Thread.currentThread();
-			System.out.println("id of the thread is " + currentThread.getId());
-			Thread.sleep(10000);
-		}catch(InterruptedException ex){
-			System.out.println(ex.getMessage());
-		}
+		Thread currentThread = Thread.currentThread();
+		System.out.println("id of the thread is " + currentThread.getId());
+		
         return a-b;
     }
     

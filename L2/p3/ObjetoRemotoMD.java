@@ -9,6 +9,7 @@ import java.lang.*;
  */
 public class ObjetoRemotoMD extends UnicastRemoteObject implements InterfaceRemotaMD
 {
+	private static int resultadoUltimaOperacion=0;
     /**
      * Construye una instancia de ObjetoRemoto
      * @throws RemoteException
@@ -21,28 +22,33 @@ public class ObjetoRemotoMD extends UnicastRemoteObject implements InterfaceRemo
     /**
      * Obtiene el producto de los numeros que le pasan y la devuelve.
      */
-    public int multiplicar(int a, int b) 
+    public synchronized int multiplicar(int a, int b) 
     {
-	    System.out.println ("Multiplicando " + a + " * " + b +"...");
 		try{
 			Thread currentThread = Thread.currentThread();
 			System.out.println("id of the thread is " + currentThread.getId());
-			Thread.sleep(10000);
+			System.out.println("resultadoUltimaOperacion " + resultadoUltimaOperacion);
+			System.out.println ("Multiplicando " + a + " * " + b +"...");
+			resultadoUltimaOperacion=a*b;
+			Thread.sleep(5000);
+			
 		}catch(InterruptedException ex){
 			System.out.println(ex.getMessage());
 		}
-        return a*b;
+			
+        return resultadoUltimaOperacion;
     }
 	/**
      * Obtiene el cociente de los numeros que le pasan y la devuelve.
      */
     public int dividir(int a, int b) 
     {
-	    System.out.println ("Dividiendo " + a + " / " + b +"...");
 		try{
 			Thread currentThread = Thread.currentThread();
 			System.out.println("id of the thread is " + currentThread.getId());
-			Thread.sleep(10000);
+			System.out.println("resultadoUltimaOperacion " + resultadoUltimaOperacion);
+			System.out.println ("Dividiendo " + a + " / " + b +"...");
+			Thread.sleep(5000);
 		}catch(InterruptedException ex){
 			System.out.println(ex.getMessage());
 		}
