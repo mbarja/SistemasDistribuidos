@@ -1,8 +1,8 @@
-version: '2'
+version: '3'
 services:
     app:
         image: nginx:1.9
         volumes:
         - .:/usr/share/nginx/html/
-        expose:
-        - "80"
+        ports:
+        - 8080:80
