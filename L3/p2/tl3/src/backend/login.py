@@ -10,6 +10,7 @@ from http import cookies
 
 cgitb.enable()
 logger = logging.getLogger()
+database = Database.instance()
 print("Content-Type: application/json;charset=utf-8")
 print()
 
@@ -23,8 +24,7 @@ def logout(cookie):
         value = cookie.get('session_value').value
         logger.error("key: " + key)
         logger.error("value: " + value)
-        database = Database.instance()
-        database.delete_cookie(key,value)
+        database.delete_cookie(key, value)
         return{'logout':True}
 
     except:
@@ -38,7 +38,6 @@ def login():
         logger.error('usuario: '+usuario)
         password = form.getvalue('password')
         logger.error('password: ' + password)
-        database = Database.instance()
         if not database.validar_credenciales(usuario, password):
             logger.error('credenciales invalidas')
             if not database.validar_usuario(usuario):

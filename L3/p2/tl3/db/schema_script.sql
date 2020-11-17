@@ -15,14 +15,18 @@ CREATE TABLE users(
 CREATE TABLE trabajos(
     id serial PRIMARY KEY,
     id_usuario integer NOT NULL,
+    lugar character(30) NOT NULL,
     fecha_inicio date NOT NULL,
     fecha_fin date,
     cargo character(25) NOT NULL,
-    observacion character(100),
-    CONSTRAINT FK_usuario FOREIGN KEY (id_usuario) REFERENCES users(id)
+    observacion character(100)
 );
 
 INSERT INTO users (name, age, username, password) 
   VALUES ('Maria Barja',30,'lala','25101990');
+  
+INSERT INTO trabajos (id_usuario,lugar,fecha_inicio,fecha_fin,cargo,observacion)
+  VALUES(1,'Grand Thornton', '2014-02-20', '2015-03-15', 'Auditor sistemas', 'BCo. Chubut');
 
 SELECT * FROM users;
+SELECT * FROM trabajos;

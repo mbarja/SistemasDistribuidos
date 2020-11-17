@@ -57,6 +57,7 @@ def query_users():
         user = u.__dict__
         user.pop('_sa_instance_state', None)    
         users.append(user)
+    logger.error(users)
     return users
 
 
@@ -103,4 +104,5 @@ if 'HTTP_COOKIE' in os.environ:
 else:
     logger.exception('el environment no tiene la cookie')
     response = {'error': True, 'credenciales': True}
+logger.error(response)
 print(json.JSONEncoder().encode(response))
