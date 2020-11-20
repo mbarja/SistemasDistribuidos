@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>TL3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.ui.position.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@beta/dist/js.cookie.min.js"></script>
+    <style>
+        .content {
+          width: 95%;
+          margin: auto;
+        }
+        .align-a-derecha {
+          text-align: right;
+        }
+    </style>
+    <script>
+
+        function deleteAllCookies() {
+            var cookies = document.cookie.split(";");
+
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i];
+                var eqPos = cookie.indexOf("=");
+                var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            }
+        }
+        function editarTrabajo(idTrabajo, columnas){
+                $('#idTrabajo').val(idTrabajo);
+                $('#lugarE').val(columnas[1]);
+                $('#fecha_inicioE').val(columnas[2]);
+
+                var fechaFin = ''
+                if(columnas[3]!= ' - ') fechaFin = columnas[3];
+
+                $('#fecha_finE').val(fechaFin);
+                $('#cargoE').val(columnas[4]);
+
+                var observacion = ''
+                if(columnas[5]!= ' - ') observacion = columnas[5];
+
+                $('#observacionE').val(observacion);
+
+                $('#editarTrabajoModal').modal('toggle');
+                $('#editarTrabajoModal').modal('show');
+
+        }
+        function eliminarTrabajo(idTrabajo){
+                console.log("Eliminar trabajo");
+                var formData = {
+                            'idTrabajo' : idTrabajo
+                }
+                $.ajax({
+                    type        : 'POST',
+                    url         : '/trabajos/eliminar',
+                    data        : formData,
+                    dataType    : 'json',
+                    encode      : true,
+                    xhrFields: {
+                        withCredentials: true
+                    }
+                })
+                .done(function(data) {
+                    get_trabajos();
+                })
+                .fail(function(data){
+                    alert("error al eliminar trabajo");
+                    console.log(data);
+                });
+
+        }
+        function parsearTrabajos(trabajos){
+            console.log('load_trabajos || ');
+            console.log(trabajos);
+            for (row in trabajos){
+                let trabajo = trabajos[row];
+                console.log(row);
+                console.log(trabajo);
+                var fechaFin = ' - ';
+                var observacion = ' - ';
+                new_tr = '<tr><th scope="row">'+ trabajo.id + '</th>';
+                new_tr += '<td>'+trabajo.id_usuario+'</td>';
+                new_tr += '<td>'+trabajo.lugar.trim()+'</td>';
+                new_tr += '<td>'+trabajo.fecha_inicio+'</td>';
+                if(trabajo.fecha_fin != null){
+                    fechaFin= trabajo.fecha_fin
+                }
+                new_tr += '<td>'+fechaFin+'</td>';
+                new_tr += '<td>'+trabajo.cargo.trim()+'</td>';
+                if(trabajo.observacion!= null){
+                    observacion = trabajo.observacion.trim();
+                }
+                new_tr += '<td>'+observacion+'</td></tr>';
+                console.log(new_tr);
+                $('#trabajos_tbody').append(new_tr);
+            }
+        }
+        function procesarRespuestaLogin(respuesta){
+                if(respuesta.error){
+                    if(respuesta.usuario){
+                        $('#user').removeClass('form-control').addClass('form-control is-invalid');
+                        $('#userError').text('No existe el usuario');
+                    }else{
+                        $('#pass').removeClass('form-control').addClass('form-control is-invalid');
+                        $('#passError').text('Contraseña inválida');
+                    }
+                }
+                else{
+                    alert("LOGIN OK");
+                    console.log(respuesta)
+                    Cookies.set('session_key', $('#user').val());
+                    Cookies.set('session_value', respuesta.cookie);
+                    $('#loginModal').modal('toggle');
+                    get_trabajos();
+                }
+            }
+
+        function logout(){
+            var jqxhr = $.get("/login/logout", function( response ) {
+                    console.log(response);
+                    if(response.error) {
+                        alert("ERROR");
+                    }
+                    else{
+                        alert("Finalizó la sesión");
+                        deleteAllCookies();
+                        get_trabajos();
+                    }
+                })
+                .fail(function(data) {
+                    new_tr = '<tr><th scope="row" colspan="5"> No se pudieron consultar los usuarios</th>';
+                    $('#users_tbody').append(new_tr);
+                });
+        }
+        function validarCredenciales(){
+                console.log("validar credenciales");
+                var formData = {
+                            'username' : $('#user').val(),
+                            'password' : $('#pass').val()
+                }
+                $.ajax({
+                    type        : 'POST',
+                    url         : '/login/login',
+                    data        : formData,
+                    dataType    : 'json',
+                    encode      : true,
+                    xhrFields: {
+                        withCredentials: true
+                    }
+                })
+                .done(function(data) {
+                    procesarRespuestaLogin(data);
+                })
+                .fail(function(data){
+                    alert(data);
+                    alert('LOGIN ERROR');
+                });
+        }
+
+        function solicitarCredenciales(){
+            $('#loginModal').modal('toggle');
+            $('#loginModal').modal('show');
+        }
+
+        function get_trabajos(){
+            $("#trabajos_tbody").empty();
+            var jqxhr = $.get("/trabajos/get_trabajos", function( response ) {
+                if(response.error) {
+                    solicitarCredenciales();
+                }
+                else{
+
+                    parsearTrabajos(response);
+
+                }
+
+            })
+            .fail(function(data) {
+                new_tr = '<tr><th scope="row" colspan="5"> No se pudieron consultar los usuarios</th>';
+                $('#trabajos_tbody').append(new_tr);
+            });
+        }
+
+        $(document).ready(function(){
+            get_trabajos();
+
+            $('#nuevo_trabajo').submit(function(event) {
+                var formData = {
+                    'lugar'       : $('#lugar').val(),
+                    'fecha_inicio': $('#fecha_inicio').val(),
+                    'fecha_fin'   : $('#fecha_fin').val(),
+                    'cargo'       : $('#cargo').val(),
+                    'observacion' : $('#observacion').val()
+                };
+
+                $.ajax({
+                    type        : 'POST',
+                    url         : '/trabajos/create_trabajo',
+                    data        : formData,
+                    dataType    : 'json',
+                    encode      : true
+                })
+                .done(function(data) {
+                    alert('Trabajo guardado correctamente');
+                    $('#toggle_modal').click()
+                    get_trabajos();
+                })
+                .fail(function(data){
+                    alert('No se pudo guardar el trabajo');
+                });
+
+                event.preventDefault();
+            });
+
+            $('#editar_trabajo').submit(function(event) {
+                    var formData = {
+                        'idTrabajo'   : $('#idTrabajo').val(),
+                        'lugar'       : $('#lugarE').val(),
+                        'fecha_inicio': $('#fecha_inicioE').val(),
+                        'fecha_fin'   : $('#fecha_finE').val(),
+                        'cargo'       : $('#cargoE').val(),
+                        'observacion' : $('#observacionE').val()
+                    };
+
+                    $.ajax({
+                        type        : 'POST',
+                        url         : '/trabajos/editar_trabajo',
+                        data        : formData,
+                        dataType    : 'json',
+                        encode      : true
+                    })
+                    .done(function(data) {
+                        alert('Trabajo editado correctamente');
+                        $('#editarTrabajoModal').click();
+                        get_trabajos();
+
+                    })
+                    .fail(function(data){
+                        alert('No se pudo guardar el trabajo');
+                    });
+
+                    event.preventDefault();
+            });
+
+           $(".context-menu-one").contextMenu({
+                selector: 'tr',
+                callback: function(key, options) {
+                    console.log(key);
+                    var content = $(this).text();
+                    var $row = $(this).closest("tr");       // Finds the closest row <tr>
+                    $tds = $row.find("td");             // Finds all children <td> elements
+                    $idTrabajo = $row.find("th");
+                    var idTrabajo = $idTrabajo.text();
+                    console.log("id trabajo: "+idTrabajo);
+                    var columnas=[];
+                    $.each($tds, function() {               // Visits every single <td> element
+                        columnas.push(($(this).text()));        // Prints out the text within the <td>
+                    });
+                    console.log(columnas);
+
+                    if(key=='eliminar'){
+                        var r = confirm("Desea eliminar el trabajo en "+columnas[1]);
+                        if (r == true) eliminarTrabajo(idTrabajo);
+                    }else{
+                        editarTrabajo(idTrabajo, columnas);
+                    }
+                },
+                items: {
+                    "editar": {name: "Editar", icon: "edit"},
+                    "eliminar": {name: "Eliminar", icon: "delete"},
+                }
+            });
+        });
+    </script>
+</head>
+<body>    
+    <nav class="navbar navbar-dark bd-navbar bg-dark">
+        <a class="navbar-brand" href="#">
+            <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-globe2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855-.143.268-.276.56-.395.872.705.157 1.472.257 2.282.287V1.077zM4.249 3.539a8.372 8.372 0 0 1-1.198-.49 7.01 7.01 0 0 1 2.276-1.52 6.7 6.7 0 0 0-.597.932 8.854 8.854 0 0 0-.48 1.079zM3.509 7.5H1.017A6.964 6.964 0 0 1 2.38 3.825c.47.258.995.482 1.565.667A13.4 13.4 0 0 0 3.508 7.5zm1.4-2.741c.808.187 1.681.301 2.591.332V7.5H4.51c.035-.987.176-1.914.399-2.741zM8.5 5.09V7.5h2.99a12.342 12.342 0 0 0-.399-2.741c-.808.187-1.681.301-2.591.332zM4.51 8.5H7.5v2.409c-.91.03-1.783.145-2.591.332a12.343 12.343 0 0 1-.4-2.741zm3.99 0v2.409c.91.03 1.783.145 2.591.332.223-.827.364-1.754.4-2.741H8.5zm-3.282 3.696A12.63 12.63 0 0 1 7.5 11.91v3.014c-.67-.204-1.335-.82-1.887-1.855a7.776 7.776 0 0 1-.395-.872zm.11 2.276a6.696 6.696 0 0 1-.598-.933 8.853 8.853 0 0 1-.481-1.079 8.38 8.38 0 0 0-1.198.49 7.01 7.01 0 0 0 2.276 1.522zm-1.383-2.964a9.083 9.083 0 0 0-1.565.667A6.963 6.963 0 0 1 1.018 8.5h2.49a13.36 13.36 0 0 0 .437 3.008zm6.728 2.964a7.009 7.009 0 0 0 2.275-1.521 8.376 8.376 0 0 0-1.197-.49 8.853 8.853 0 0 1-.481 1.078 6.688 6.688 0 0 1-.597.933zM8.5 11.909c.81.03 1.577.13 2.282.287-.12.312-.252.604-.395.872-.552 1.035-1.218 1.65-1.887 1.855V11.91zm3.555-.401c.57.185 1.095.409 1.565.667A6.963 6.963 0 0 0 14.982 8.5h-2.49a13.36 13.36 0 0 1-.437 3.008zM14.982 7.5h-2.49a13.361 13.361 0 0 0-.437-3.008 9.123 9.123 0 0 0 1.565-.667A6.963 6.963 0 0 1 14.982 7.5zM11.27 2.461c.177.334.339.694.482 1.078a8.368 8.368 0 0 0 1.196-.49 7.01 7.01 0 0 0-2.275-1.52c.218.283.418.597.597.932zm-.488 1.343c-.705.157-1.473.257-2.282.287V1.077c.67.204 1.335.82 1.887 1.855.143.268.276.56.395.872z"/>
+            </svg>  
+            Distribuidos
+        </a>
+        <ul class="nav navbar-nav navbar-right">
+            <li>
+                <div class="btn-nav"><button type="button" class="btn btn-success btn-small navbar-btn" onclick="window.location.href='http://localhost:8000/users/';">Usuarios</button></div>
+            </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li>
+                <div class="btn-nav"><button type="button" class="btn btn-primary btn-small navbar-btn" onclick="logout()">Salir</button></div>
+            </li>
+        </ul>
+    </nav>
+    <br><br>
+    <div class="content">
+        <table id="tabla_trabajos" class="table table-hover" >
+            <thead class="bg-warning">
+                <tr>
+                    <th scope="col" colspan="7">Trabajos</th>
+                </tr>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">usr</th>
+                    <th scope="col">Lugar</th>
+                    <th scope="col">Fecha Inicio</th>
+                    <th scope="col">Fecha Fin</th>
+                    <th scope="col">Cargo</th>
+                    <th scope="col">Observacion</th>
+                </tr>
+            </thead>
+            <tbody id="trabajos_tbody" class="context-menu-one">
+            </tbody>
+            <tfoot>
+                <tr class="bg-warning">                    
+                    <td colspan="7" class="align-a-derecha">
+                        <button id="toggle_modal" type="button" class="btn btn-dark" data-toggle="modal" data-target="#trabajoModal">
+                            Agregar
+                        </button>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="trabajoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Cargar Trabajo</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body"> 
+            <form id="nuevo_trabajo" action="/trabajos/create_trabajo" method="post">
+
+                <div class="form-group">
+                    <label for="lugar">Lugar</label>
+                    <input type="text" class="form-control" id="lugar" name="lugar" aria-describedby="emailHelp" placeholder="Lugar">
+                </div>
+                <div class="form-group">
+                    <label for="fecha_inicio">Fecha Inicio</label>
+                    <input type="text" class="form-control" id="fecha_inicio" name="fecha_inicio" placeholder="Fecha Inicio">
+                </div>
+                 <div class="form-group">
+                    <label for="fecha_fin">Fecha Fin</label>
+                    <input type="text" class="form-control" id="fecha_fin" name="fecha_fin" placeholder="Fecha Fin">
+                </div>
+                <div class="form-group">
+                    <label for="cargo">Cargo</label>
+                    <input type="text" class="form-control" id="cargo" name="cargo"  placeholder="Cargo">
+                </div>
+                <div class="form-group">
+                    <label for="observacion">Observaciones</label>
+                    <input type="text" class="form-control" id="observacion" name="observacion" placeholder="Observaciones">
+                </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="$('#nuevo_trabajo').submit();">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="editarTrabajoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="ModalLabel">Editar Trabajo</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="editar_trabajo" action="/trabajos/editar_trabajo" method="post">
+                 <div class="form-group" style="display:none;">
+                    <input type="text" class="form-control" id="idTrabajo" name="lugar">
+                </div>
+                <div class="form-group">
+                    <label for="lugar">Lugar</label>
+                    <input type="text" class="form-control" id="lugarE" name="lugar" aria-describedby="emailHelp" placeholder="Lugar">
+                </div>
+                <div class="form-group">
+                    <label for="fecha_inicio">Fecha Inicio</label>
+                    <input type="text" class="form-control" id="fecha_inicioE" name="fecha_inicio" placeholder="Fecha Inicio">
+                </div>
+                 <div class="form-group">
+                    <label for="fecha_fin">Fecha Fin</label>
+                    <input type="text" class="form-control" id="fecha_finE" name="fecha_fin" placeholder="Fecha Fin">
+                </div>
+                <div class="form-group">
+                    <label for="cargo">Cargo</label>
+                    <input type="text" class="form-control" id="cargoE" name="cargo"  placeholder="Cargo">
+                </div>
+                <div class="form-group">
+                    <label for="observacion">Observaciones</label>
+                    <input type="text" class="form-control" id="observacionE" name="observacion" placeholder="Observaciones">
+                </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="$('#editar_trabajo').submit();">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">Iniciar Sesión</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="credenciales_login" action="/login/login" method="post">
+                <div class="form-group">
+                    <label for="user">Usuario</label>
+                    <input type="text" class="form-control" id="user" name="username" aria-describedby="Usuario" placeholder="Usuario">
+                     <small id="userError" class="text-danger"> </small>
+                </div>
+                <div class="form-group">
+                    <label for="pass">Contraseña</label>
+                    <input type="password" class="form-control" id="pass" name="password" placeholder="Contraseña">
+                    <small id="passError" class="text-danger">
+                    </small>
+                </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="validarCredenciales()">Login</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+
+</html>
