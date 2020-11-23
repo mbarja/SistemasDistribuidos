@@ -11,6 +11,63 @@
     <link rel="stylesheet" href="statics/estilos.css">
     <script src="https://cdn.jsdelivr.net/npm/js-cookie@beta/dist/js.cookie.min.js"></script>
     <script>
+        function deleteAllCookies() {
+                var cookies = document.cookie.split(";");
+
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i];
+                    var eqPos = cookie.indexOf("=");
+                    var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                }
+            }
+
+            function procesarRespuestaLogin(respuesta){
+                if(respuesta.error){
+                    if(respuesta.usuario){
+                        $('#user').removeClass('form-control').addClass('form-control is-invalid');
+                        $('#userError').text('No existe el usuario');
+                    }else{
+                        $('#pass').removeClass('form-control').addClass('form-control is-invalid');
+                        $('#passError').text('Contraseña inválida');
+                    }
+                }
+                else{
+                    alert("LOGIN OK");
+                    Cookies.set('session_key', $('#user').val());
+                    Cookies.set('session_value', respuesta.cookie);
+                    $('#loginModal').modal('toggle');
+                    get_trabajos();
+                }
+            }
+            function validarCredenciales(){
+                console.log("validar credenciales");
+                var formData = {
+                            'username' : $('#user').val(),
+                            'password' : $('#pass').val()
+                }
+                $.ajax({
+                    type        : 'POST',
+                    url         : '/cgi-bin/login.py',
+                    data        : formData,
+                    dataType    : 'json',
+                    encode      : true,
+                    xhrFields: {
+                        withCredentials: true
+                    }
+                })
+                .done(function(data) {
+                    procesarRespuestaLogin(data);
+                })
+                .fail(function(data){
+                    alert(data);
+                    alert('LOGIN ERROR');
+                });
+        }
+        function solicitarCredenciales(){
+            $('#loginModal').modal('toggle');
+            $('#loginModal').modal('show');
+        }
 
         function parsearTrabajos(trabajos){
             console.log('load_trabajos || ');
@@ -51,13 +108,11 @@
             $("#trabajos_tbody").empty();
             var jqxhr = $.get("/cgi-bin/trabajos.py", function( response ) {
                 if(response.error) {
-                    alert("ERROR");
+                    solicitarCredenciales();
                 }
                 else{
                     parsearTrabajos(response);
-
                 }
-
             })
             .fail(function(data) {
                 new_tr = '<tr><th scope="row" colspan="5"> No se pudieron consultar los usuarios</th>';
@@ -93,6 +148,15 @@
                 });
 
                 event.preventDefault();
+            });
+
+            $('#user').change(function(){
+                        $('#user').removeClass('form-control is-invalid').addClass('form-control')
+                        $('#userError').text('');
+            });
+            $('#pass').change(function(){
+                        $('#pass').removeClass('form-control is-invalid').addClass('form-control')
+                        $('#passError').text('');
             });
         });
     </script>

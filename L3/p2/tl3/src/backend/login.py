@@ -45,7 +45,7 @@ def login():
                 return {'error':True, 'usuario': True}
             else:
                 logger.error('Clave invalida')
-                return {'error': True, 'password':True}
+                return {'error': True, 'password': True}
         else:
             if database.exists_cookie(usuario):
                 cookie =database.get_cookie(usuario)

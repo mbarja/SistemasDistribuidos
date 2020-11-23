@@ -3,7 +3,6 @@
     value character(36) NOT NULL
 );
 
-
 CREATE TABLE users(
     id serial PRIMARY KEY, 
     name character(70) NOT NULL,
