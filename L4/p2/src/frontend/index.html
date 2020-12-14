@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>TL3</title>
+    <script type="text/javascript" src="statics/jquery-3.5.1.js"></script>
+    <script type="text/javascript" src="statics/bootstrap/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="statics/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="statics/estilos.css">
+    <script>
+        var usuariosConectados=[];
+        var client;
+        var userName="";
+        var chatsPrivados=[];
+
+        function enviarMensajeDesloguear(){
+            console.log("desloguear");
+            var mensajeJson = {};
+            mensajeJson["user"] = userName;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/users/destroy";
+            client.send(message);
+        }
+
+        function logout(){
+            enviarMensajeDesloguear();
+            client.disconnect();
+            userName="";
+            usuariosConectados=[];
+        }
+
+        function enviarSolicitud(destino){
+            var r = confirm("Desea iniciar un chat privado con "+destino);
+            if (r == true) solicitarAutorizacion(destino);
+        }
+
+
+        function setearUsuariosConectados(usuariosRecibidos){
+
+            $.each(usuariosRecibidos, function(i, el){
+                if($.inArray(el, usuariosConectados) === -1) usuariosConectados.push(el);
+            });
+
+            $("#usuariosConectadosList ul").empty()
+            $.each(usuariosConectados, function(i, el){
+
+                if(el!=userName) $("#usuariosConectadosList ul").append('<li class="lista_usuarios" onclick="enviarSolicitud(this.id)" id="'+el+'">'+el+'</a></li>');
+            });
+
+        }
+
+        function agregarUsuario(usuarioNuevo){
+            usuariosConectados.push(usuarioNuevo)
+            enviarListaDeUsuarios(usuariosConectados);
+        }
+
+        function eliminarUsuario(usuario){
+            var index = usuariosConectados.indexOf(usuario);
+            if (index > -1) {
+                usuariosConectados.splice(index, 1);
+            }
+            var msgs = $('#messages').html();
+            msgs = msgs +'\n' + usuario + ' cerro sesión ';
+            $('#messages').html(msgs);
+            enviarListaDeUsuarios(usuariosConectados);
+        }
+
+        function solicitarNombreUsuario(){
+            $('#usuarioModal').modal('toggle');
+            $('#usuarioModal').modal('show');
+        }
+
+        function setearNombreUsuario(){
+              userName = $('#user').val();
+              console.log("nombre de usuario: "+userName);
+              $('#usuarioModal').modal('toggle');
+              mqtt_client = mqtt_setup();
+
+        }
+
+        function enviarMensajePrivado(tokenDestino){
+            console.log(chatsPrivados);
+            var usuarioDestino="";
+            for (var i = 0; i < chatsPrivados.length; ++i) {
+                if(chatsPrivados[i].token == tokenDestino) usuarioDestino = chatsPrivados[i].user;
+            }
+            var textInputId = "mqtt_private_msg_"+tokenDestino;
+            var msg = $("body").find('#' + textInputId);
+            var mensajeJson = {};
+            mensajeJson["user"] = userName;
+            mensajeJson["message"] = msg.val();
+            mensajeJson["token"] = tokenDestino;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/"+usuarioDestino+"/Private/"+tokenDestino;
+            client.send(message);
+            var msgTA = $('#' + tokenDestino);
+            var msgs = msgTA.html();
+            msgs = msgs +'\n' + userName + ': ' + msg.val();
+            msgTA.html(msgs);
+            msg.val("");
+
+        }
+
+        function CrearChatPrivado(userDestino, token){
+            var chat = {'user': userDestino, 'token':token}
+            chatsPrivados.push(chat);
+            var chatHtml = '<div class="col-md-3>';
+            chatHtml+='<div class="panel panel-primary">';
+            chatHtml+='<div class="panel-heading">';
+            chatHtml+='<h5> '+userDestino+' </h5>';
+            chatHtml+='</div><div class="panel-body"><textarea class="form-control" id='+token+' rows="20"></textarea>';
+            chatHtml+='</div><div class="panel-footer"><div class="input-group"><input id="mqtt_private_msg_'+token+'" type="text" class="form-control input-sm" placeholder="Escribe un mensaje..." />';
+            chatHtml+='<span class="input-group-btn"><button class="btn btn-warning btn-sm" id="send_private_message" onclick="enviarMensajePrivado('+token+')" >Enviar</button></span>';
+            chatHtml+='</div></div></div></div>';
+            $('#chats').append(chatHtml);
+
+        }
+
+        function message_handler(message){
+            var destinationName = message.destinationName;
+            var payload = message.payloadString;
+            var requests = '/SD2020/Chat/'+userName+"/Request";
+            var privados = '/SD2020/Chat/'+userName+"/Private";
+            var solicitudes = "/SD2020/Chat/"+userName+"/Solicitudes";
+            console.log(requests);
+            console.log("destinationName: " + destinationName);
+            console.log("payload: " + payload);
+            if (destinationName == '/SD2020/Chat/General'){
+                var msgs = $('#messages').html();
+                var msg = JSON.parse(payload);
+                console.log(msg);
+                msgs = msgs +'\n' + msg.user + ': ' + msg.message;
+                $('#messages').html(msgs);
+            }
+            if (destinationName == '/SD2020/Chat/users/new'){
+                var msg = JSON.parse(payload);
+                console.log(msg);
+                var msgs = $('#messages').html();
+                msgs = msgs +'\n' + msg.user + ' inicio sesión ';
+                $('#messages').html(msgs);
+                agregarUsuario(msg.user);
+            }
+            if (destinationName == '/SD2020/Chat/users'){
+                console.log("se reciben usuarios");
+                var msg = JSON.parse(payload);
+                setearUsuariosConectados(msg.usuarios);
+            }
+            if (destinationName == requests){
+                var msg = JSON.parse(payload);
+                var r = confirm("El usuario "+msg.user+ " desea iniciar un chat privado");
+                if (r == true) {
+                    CrearChatPrivado(msg.user, msg.token);
+                    enviarRespuestaASolicitud(msg.user, msg.token, true);
+                }else{
+                    enviarRespuestaASolicitud(msg.user, msg.token, true)
+                };
+            }
+            if(destinationName == solicitudes){
+               var msg = JSON.parse(payload);
+                if (msg.estado){
+                    CrearChatPrivado(msg.user, msg.token);
+                }
+            }
+            if (destinationName.startsWith(privados)){
+
+                var msg = JSON.parse(payload);
+                console.log("mensaje de "+msg.user);
+                var msgTA = $('#' + msg.token);
+                console.log(msgTA);
+                var msgs = msgTA.html();
+                console.log(msg);
+                msgs = msgs +'\n' + msg.user + ': ' + msg.message;
+                msgTA.html(msgs);
+
+            }
+            if(destinationName == '/SD2020/Chat/users/destroy'){
+                console.log("usuario desconectado");
+                var msg = JSON.parse(payload);
+                eliminarUsuario(msg.user);
+            }
+        }
+
+        function mqtt_setup(){
+
+            var wsbroker = "192.168.0.104";
+            var wsport = 9001
+
+            client = new Paho.MQTT.Client(wsbroker, wsport,"myclientid_" + parseInt(Math.random() * 100, 10));
+
+            client.onConnectionLost = function (responseObject) {
+                console.log("connection lost: " + responseObject.errorMessage);
+                var mensajeJson = {};
+                mensajeJson["user"] = userName;
+                var myJSON = JSON.stringify(mensajeJson);
+                message = new Paho.MQTT.Message(myJSON);
+                message.destinationName = "/SD2020/Chat/users/destroy";
+                client.send(message);
+
+            };
+
+            client.onMessageArrived = function (message) {
+                message_handler(message);
+            };
+            var options = {
+                timeout: 3,
+                useSSL: false,
+                cleanSession: true,
+                userName: '',
+                password: '',
+
+                onSuccess: function () {
+                    console.log("mqtt connected");
+                    client.subscribe('/SD2020/Chat/General/#', {qos: 0});
+                    client.subscribe('/SD2020/Chat/users/#', {qos: 1});
+                    client.subscribe('/SD2020/Chat/'+userName+'/#', {qos: 2});
+
+                    var mensajeJson = {};
+                    mensajeJson["user"] = userName;
+                    var myJSON = JSON.stringify(mensajeJson);
+                    message = new Paho.MQTT.Message(myJSON);
+                    message.destinationName = "/SD2020/Chat/users/new";
+                    client.send(message);
+
+                },
+                onFailure: function (message) {
+                    console.log("Connection failed: " + message.errorMessage);
+                    console.log(message);
+                }
+
+            };
+
+            client.connect(options);
+
+            return client;
+        }
+
+        function enviarRespuestaASolicitud(destino, token, estado){
+            var mensajeJson = {};
+            mensajeJson["user"] = userName;
+            mensajeJson["estado"] = estado;
+            mensajeJson["token"] = token;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/"+destino+"/Solicitudes";
+            client.send(message);
+        }
+
+        function solicitarAutorizacion(destino){
+           var mensajeJson = {};
+            mensajeJson["user"] = userName;
+            var token = Math.floor(Math.random() * 9999) + 1;
+            mensajeJson["token"] = token;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/"+destino+"/Request";
+            client.send(message);
+        }
+
+        function enviarMensajeAChatGeneral(mensaje){
+            var mensajeJson = {};
+            mensajeJson["user"] = userName;
+            mensajeJson["message"] = mensaje;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/General";
+            client.send(message);
+        }
+        function enviarListaDeUsuarios(usuarios){
+            var mensajeJson = {};
+            mensajeJson["usuarios"] = usuarios;
+            var myJSON = JSON.stringify(mensajeJson);
+            message = new Paho.MQTT.Message(myJSON);
+            message.destinationName = "/SD2020/Chat/users";
+            client.send(message);
+        }
+
+        $(document).ready(function(){
+
+          solicitarNombreUsuario();
+
+          $('#send_mqtt_msg').on('click', function(){
+                msg = $('#mqtt_msg').val();
+                enviarMensajeAChatGeneral(msg);
+                $('#mqtt_msg').val("");
+            });
+
+        });
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-dark bd-navbar bg-dark">
+        <a class="navbar-brand" href="#">
+            <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-globe2" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855-.143.268-.276.56-.395.872.705.157 1.472.257 2.282.287V1.077zM4.249 3.539a8.372 8.372 0 0 1-1.198-.49 7.01 7.01 0 0 1 2.276-1.52 6.7 6.7 0 0 0-.597.932 8.854 8.854 0 0 0-.48 1.079zM3.509 7.5H1.017A6.964 6.964 0 0 1 2.38 3.825c.47.258.995.482 1.565.667A13.4 13.4 0 0 0 3.508 7.5zm1.4-2.741c.808.187 1.681.301 2.591.332V7.5H4.51c.035-.987.176-1.914.399-2.741zM8.5 5.09V7.5h2.99a12.342 12.342 0 0 0-.399-2.741c-.808.187-1.681.301-2.591.332zM4.51 8.5H7.5v2.409c-.91.03-1.783.145-2.591.332a12.343 12.343 0 0 1-.4-2.741zm3.99 0v2.409c.91.03 1.783.145 2.591.332.223-.827.364-1.754.4-2.741H8.5zm-3.282 3.696A12.63 12.63 0 0 1 7.5 11.91v3.014c-.67-.204-1.335-.82-1.887-1.855a7.776 7.776 0 0 1-.395-.872zm.11 2.276a6.696 6.696 0 0 1-.598-.933 8.853 8.853 0 0 1-.481-1.079 8.38 8.38 0 0 0-1.198.49 7.01 7.01 0 0 0 2.276 1.522zm-1.383-2.964a9.083 9.083 0 0 0-1.565.667A6.963 6.963 0 0 1 1.018 8.5h2.49a13.36 13.36 0 0 0 .437 3.008zm6.728 2.964a7.009 7.009 0 0 0 2.275-1.521 8.376 8.376 0 0 0-1.197-.49 8.853 8.853 0 0 1-.481 1.078 6.688 6.688 0 0 1-.597.933zM8.5 11.909c.81.03 1.577.13 2.282.287-.12.312-.252.604-.395.872-.552 1.035-1.218 1.65-1.887 1.855V11.91zm3.555-.401c.57.185 1.095.409 1.565.667A6.963 6.963 0 0 0 14.982 8.5h-2.49a13.36 13.36 0 0 1-.437 3.008zM14.982 7.5h-2.49a13.361 13.361 0 0 0-.437-3.008 9.123 9.123 0 0 0 1.565-.667A6.963 6.963 0 0 1 14.982 7.5zM11.27 2.461c.177.334.339.694.482 1.078a8.368 8.368 0 0 0 1.196-.49 7.01 7.01 0 0 0-2.275-1.52c.218.283.418.597.597.932zm-.488 1.343c-.705.157-1.473.257-2.282.287V1.077c.67.204 1.335.82 1.887 1.855.143.268.276.56.395.872z"/>
+            </svg>
+            Distribuidos
+        </a>
+        <button type="button" class="btn btn-primary btn-small navbar-btn" onclick="logout()">Salir</button>
+    </nav>
+    <br>
+
+    <div class="container">
+    <div class="row" id="chats">
+        <!-- inicio de la caja de chat con bootstrap -->
+        <div class="col-md-4">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h4> Chat general </h4>
+                </div>
+                <div class="panel-body">
+                    <textarea class="form-control" id="messages" rows="20"></textarea>
+                </div>
+                <div class="panel-footer">
+                    <div class="input-group">
+                        <input id="mqtt_msg" type="text" class="form-control input-sm" placeholder="Escribe un mensaje..." />
+                        <span class="input-group-btn">
+                            <button class="btn btn-warning btn-sm" id="send_mqtt_msg" >
+                                Enviar</button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-2">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h5> Usuarios conectados </h5>
+                </div>
+                <div id="usuariosConectadosList" class="panel-body">
+                    <ul>
+
+                    </ul>
+
+                </div>
+
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="usuarioModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">Iniciar Sesión</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="credenciales_login" >
+                <div class="form-group">
+                    <label for="user">Usuario</label>
+                    <input type="text" class="form-control" id="user" name="username" aria-describedby="Usuario" placeholder="Usuario">
+
+                </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="setearNombreUsuario()">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+</body>
+
+</html>
